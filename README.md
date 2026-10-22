@@ -82,6 +82,7 @@ scripts/
   build_bnb_dcu.sh                        为 DCU 编译 bitsandbytes
   moss_download.py                        权重下载（断点续传、sha256 校验、多源切换）
 tools/make_dcu_workflows.py               由官方模板生成 DCU 版工作流
+tools/test_triton_ir_fix.py               验证 triton IR 修复（不加修复时段错误，加上后与 eager 结果一致）
 docs/MossImage_DCU技术手册.md             问题分析与实现细节
 ```
 
@@ -103,7 +104,7 @@ docs/MossImage_DCU技术手册.md             问题分析与实现细节
    | 参数 | 作用 |
    |---|---|
    | `--use-pytorch-cross-attention` | gfx928 不在 ComfyUI 的 AMD 白名单内，默认会用慢速注意力；开启后走 DAS flash_attn，注意力约快 15 倍 |
-   | `--enable-triton-backend` | 融合算子（RMSNorm/AdaLN/RoPE）走 DAS triton，整体约快 10%；需配合 `dcu_compat.py`，否则加载 int8/w4a8 模型会段错误 |
+   | `--enable-triton-backend` | 融合算子（RMSNorm/AdaLN/RoPE）走 DAS triton，整体约快 10%；**必须配合 `dcu_compat.py`**，否则 Prompt 增强、int8/w4a8 模型等会在编译 triton 内核时段错误 |
 
 3. 把 `workflows/*.json` 拖入 ComfyUI 使用：
 
@@ -162,8 +163,8 @@ python3 scripts/moss_download.py --list                      # 查看 base / all
 | 现象 | 处理 |
 |---|---|
 | 训练 loss 从第 3 步起恒为 NaN | DAS flash 注意力反向在大 logit 下 dq 错误。`dcu_sdpa.py` 前向仍用 flash，反向改为 V 平移 + fp16 + 梯度缩放后计算，异常时回退 math；与 fp32 结果余弦 ≥ 0.99997 |
-| 加载官方 int8/w4a8 模型时 ComfyUI 段错误 | 量化相关 triton 内核在 DTK 上编译失败；`dcu_compat.py` 让这部分改用 PyTorch 实现 |
-| ai-toolkit 默认的 convrot8 量化训练崩溃 | 同类原因；`dcu_patches.py` 改走 ai-toolkit 自带的 torch 实现 |
+| 开启 Prompt 增强或加载 int8/w4a8 模型时 ComfyUI 段错误 | DAS triton 生成的 LLVM IR 含 DTK 不识别的 `getelementptr inbounds nuw` 等标记，编译内核时崩溃。`dcu_compat.py` / `dcu_patches.py` 在交给 DTK 前去掉这些标记（仅优化提示，结果不变）；量化函数另外改用 PyTorch 实现 |
+| ai-toolkit 默认的 convrot8 量化训练崩溃 | 同类原因；`dcu_patches.py` 修复 IR，并让 convrot 量化走 ai-toolkit 自带的 torch 实现 |
 | 训练结束时段错误并生成数 GB core 文件 | `dcu_patches.py` 在清理完成后按原退出码结束进程 |
 | 8bit 优化器报 invalid device function | 官方包不含 gfx928；用 `build_bnb_dcu.sh` 编译 |
 | ComfyUI 注意力慢 | 启动参数 `--use-pytorch-cross-attention` |

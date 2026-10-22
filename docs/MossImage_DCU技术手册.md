@@ -321,6 +321,14 @@ comfy-kitchen 的 HIP 后端只支持官方 ROCm，因此启用 triton 后端（
 
 原因与 6.3 相同：ai-toolkit 的 convrot int8 激活量化 triton 内核编译失败，训练进程 SIGSEGV。`dcu_patches.py` 在 DCU 上关闭这些内核，改走 ai-toolkit 自带的纯 torch 实现；int8 矩阵乘用 `torch._int_mm`，在 DCU 上结果精确（约 150 TOPS）。
 
+### 6.4b 开启 Prompt 增强时 ComfyUI 段错误（triton IR 兼容，根因修复）
+
+6.3、6.4 的崩溃其实是同一个根因：DAS triton 3.5.1 生成的 LLVM IR 带有 `getelementptr inbounds nuw` 等新语法，DTK 26.04 的编译器不认识（`addSource: error: expected type`），任何新编译的 triton 内核都可能直接段错误。实际触发过的还有 Prompt 增强（Qwen3.5 逐 token 生成）用到的 RoPE 内核。
+
+**修复**：`dcu_compat.py`（ComfyUI）与 `dcu_patches.py`（ai-toolkit）在 triton 把 IR 交给 DTK 之前去掉 GEP 的 `nuw`/`nusw`、`trunc` 的 `nuw`/`nsw`、`icmp samesign` 等标记（只是优化提示，不改变计算结果）。对照测试：不加修复时进程段错误（退出码 139），加上后编译成功，结果与 eager 实现一致（`tools/test_triton_ir_fix.py`）。
+
+此外，ComfyUI 启动脚本加了监护循环：进程异常退出时 3 秒后自动重启，避免服务挂掉后平台“访问自定义服务”检测不到服务。
+
 ### 6.5 训练结束时段错误并生成巨大 core 文件
 
 训练完成、LoRA 已保存后，进程在 libc `exit()` 卸载 HIP 运行时时段错误，退出码 139，并在工作目录（系统盘）写出 2~12GB 的 core 文件。**修复**：Python 清理完成后用原退出码 `os._exit` 结束进程（异常退出码不变）；`env.sh` 设 `ulimit -c 0`；`prepare_image.sh` 清理残留 core 文件。
@@ -376,6 +384,7 @@ K100_AI 单卡实测：
 | `MOSS_DCU_SDPA_CHECK` | 0 | 设为 1 时每次反向都与 fp32 对比并打印（调试用） |
 | `MOSS_DCU_CONVROT_TRITON` | 0 | 设为 1 恢复 convrot 的 triton 内核（DCU 上会崩溃） |
 | `MOSS_DCU_TRITON_QUANT` | 0 | 设为 1 恢复 comfy-kitchen 量化 triton 内核（DCU 上会崩溃） |
+| `MOSS_DCU_TRITON_IR_FIX` | 1 | 设为 0 关闭 triton LLVM IR 兼容处理（不建议，部分内核会编译崩溃） |
 | `MOSS_DCU_FAST_EXIT` | 1 | 设为 0 关闭训练进程退出保护 |
 
 ### 8.2 常见问题

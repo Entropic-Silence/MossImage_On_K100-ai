@@ -10,9 +10,13 @@
    退出码 139 并生成数 GB 的 core 文件。这里在 Python 正常清理（atexit）全部完成后用 os._exit 以原退出码
    直接结束进程，跳过出错的 C 层析构；未捕获异常 / sys.exit(n) 的退出码保持不变。
    设置 MOSS_DCU_FAST_EXIT=0 可关闭。
+4. triton 编译崩溃（根因修复）：DAS triton 生成的 LLVM IR 带有 `getelementptr inbounds nuw` 等 DTK 26.04
+   不认识的语法，任何新编译的 triton 内核都可能直接段错误。这里在交给 DTK 之前去掉这些标记
+   （仅为优化提示，不改变计算结果）。设置 MOSS_DCU_TRITON_IR_FIX=0 可关闭。
 """
 import atexit
 import os
+import re
 import sys
 
 from toolkit.dcu_sdpa import _is_dcu
@@ -42,9 +46,37 @@ def _install_fast_exit():
     atexit.register(_final)
 
 
+_GEP_FLAGS = re.compile(r"\bgetelementptr((?: inbounds| nusw| nuw)+)")
+_TRUNC_FLAGS = re.compile(r"\btrunc (?:nuw nsw |nsw nuw |nuw |nsw )")
+
+
+def _sanitize_llvm_ir(src):
+    src = _GEP_FLAGS.sub(lambda m: "getelementptr inbounds" if "inbounds" in m.group(1) else "getelementptr", src)
+    src = _TRUNC_FLAGS.sub("trunc ", src)
+    return src.replace("icmp samesign ", "icmp ")
+
+
+def _install_triton_ir_fix():
+    try:
+        from triton.backends.amd import compiler as amdc
+    except Exception:
+        return
+    if getattr(amdc.HIPBackend.make_amdgcn, "_moss_patched", False):
+        return
+    orig = amdc.HIPBackend.make_amdgcn
+
+    def make_amdgcn(src, metadata, options):
+        return orig(_sanitize_llvm_ir(src), metadata, options)
+
+    make_amdgcn._moss_patched = True
+    amdc.HIPBackend.make_amdgcn = staticmethod(make_amdgcn)
+
+
 def install():
     if not _is_dcu():
         return False
+    if os.environ.get("MOSS_DCU_TRITON_IR_FIX", "1") != "0":
+        _install_triton_ir_fix()
     if os.environ.get("MOSS_DCU_FAST_EXIT", "1") != "0":
         _install_fast_exit()
     _install_sdpa()
