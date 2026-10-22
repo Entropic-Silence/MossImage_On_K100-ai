@@ -1,0 +1,10 @@
+# 锁定海光 DAS 版基础包，防止 pip 用官方 CUDA 版覆盖（ABI 不兼容）
+torch==2.9.0+das.opt1.dtk2604
+torchvision==0.24.0+das.opt1.dtk2604.torch290
+triton==3.5.1+das.opt1.dtk2604.torch290
+flash-attn==2.8.3+das.opt1.dtk2604.torch290
+numpy<2
+# opencv >=4.12 需要 numpy>=2，固定在兼容 numpy 1.x 的版本，避免 pip 反复回溯
+opencv-python<4.12
+opencv-python-headless<4.12
+opencv-contrib-python<4.12

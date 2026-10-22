@@ -1,0 +1,67 @@
+---
+# MOSS-Image Base LoRA 训练（海光 DCU K100_AI 64GB 示例配置）
+#   运行: cd <ai-toolkit 目录> && MODELS_PATH=<权重目录> ./venv/bin/python run.py <本文件>
+#   请把下面的 training_folder、folder_path 改成自己的路径（示例为 SCNet 个人目录）
+#   也可以在训练 WebUI 中新建任务，选择 MOSS-Image Base，参数与本文件一致
+job: extension
+config:
+  name: "moss_base_lora_dcu"
+  process:
+    - type: 'sd_trainer'
+      training_folder: "/root/private_data/MossImage/aitk/output"
+      device: cuda:0
+      performance_log_every: 25
+      network:
+        type: "lora"
+        linear: 32            # 官方/社区推荐 rank 32
+        linear_alpha: 32
+        network_kwargs:
+          # 推理时 CFG 负分支跳过第 22 层（SLG），LoRA 不训练该层以保持跳层对比
+          ignore_if_contains: ["layers.22."]
+      save:
+        dtype: bf16
+        save_every: 150
+        max_step_saves_to_keep: 4
+      datasets:
+        - folder_path: "/root/private_data/MossImage/aitk/datasets/moss_test_risograph"
+          caption_ext: "txt"
+          caption_dropout_rate: 0.05
+          cache_latents_to_disk: true
+          resolution: [ 1024 ]
+      train:
+        batch_size: 1
+        cache_text_embeddings: true   # 预先编码文本后卸载 Qwen3.5-9B，节省显存
+        steps: 300
+        gradient_accumulation: 1
+        train_unet: true
+        train_text_encoder: false     # 文本编码器保持冻结（官方建议）
+        gradient_checkpointing: true
+        noise_scheduler: "flowmatch"
+        timestep_type: "shift"
+        optimizer: "adamw"            # DCU: 若已编译 gfx928 版 bitsandbytes 可改为 adamw8bit
+        lr: 0.0001          # 注意写成小数，PyYAML 会把 1e-4 解析成字符串
+        dtype: bf16
+      model:
+        name_or_path: "OpenMOSS-Team/MOSS-Image-Base"   # 自动使用 $MODELS_PATH 下已下载的 Comfy 格式 bf16 权重
+        arch: "moss_image"
+        quantize: false               # 64GB 显存无需量化，bf16 更快更准
+        quantize_te: false
+        low_vram: false
+        model_kwargs:
+          uncond_skip_layers: [22]
+      sample:
+        sampler: "flowmatch"
+        sample_every: 150
+        width: 1024
+        height: 1024
+        prompts:
+          - "rsgrph style, a robot watering plants in a greenhouse"
+          - "a robot watering plants in a greenhouse"
+        neg: ""
+        seed: 42
+        walk_seed: false
+        guidance_scale: 3
+        sample_steps: 25
+meta:
+  name: "[name]"
+  version: '1.0'

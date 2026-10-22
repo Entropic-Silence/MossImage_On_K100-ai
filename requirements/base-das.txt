@@ -1,0 +1,11 @@
+# 基础环境（系统 Python 3.11）中需要的海光 DAS 组件，均来自 DAS1.8：
+#   https://download.sourcefind.cn:65024/directlink/4/<pytorch|vision|triton|flash_attn>/DAS1.8/
+# 基础镜像已自带 torch；其余三个需用 --no-deps 安装对应 cp311 轮子，再 pip install einops pytest（flash_attn 导入时需要）
+torch==2.9.0+das.opt1.dtk2604
+torchvision==0.24.0+das.opt1.dtk2604.torch290
+triton==3.5.1+das.opt1.dtk2604.torch290
+flash_attn==2.8.3+das.opt1.dtk2604.torch290
+einops==0.8.2
+pytest==9.1.1
+# 基础镜像自带、保持不变：
+numpy==1.25.0

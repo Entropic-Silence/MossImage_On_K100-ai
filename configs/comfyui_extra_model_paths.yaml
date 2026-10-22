@@ -1,0 +1,14 @@
+# ComfyUI 模型路径示例：把 MOSS-Image 权重放在 ComfyUI 目录之外（例如持久化盘），与 ai-toolkit 共用
+# 用法: python main.py --extra-model-paths-config <本文件> ...
+# ai-toolkit 训练时设置环境变量 MODELS_PATH 指向同一个 base_path，即可直接使用这些权重
+moss_image:
+    base_path: /root/private_data/MossImage/models/comfyui     # 改成你的权重目录
+    is_default: true
+    diffusion_models: |
+        diffusion_models
+        unet
+    text_encoders: |
+        text_encoders
+        clip
+    vae: vae
+    loras: loras

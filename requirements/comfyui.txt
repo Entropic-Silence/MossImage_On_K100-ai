@@ -1,0 +1,54 @@
+# ComfyUI 环境（venv，--system-site-packages 继承基础环境中的 DAS torch 等）实测可用的完整依赖版本
+# 安装: pip install -c requirements/constraints-das.txt -r requirements/comfyui.txt
+#       然后按 README「torchaudio」一节单独安装 torchaudio
+# 对应 ComfyUI commit 37ff76b4（0.42.0）、ComfyUI-Manager commit a74929c6（3.42）
+aiohttp_socks==0.12.0
+alembic==1.20.0
+av==18.1.0
+blake3==1.0.11
+chardet==7.7.0
+comfy-aimdo==0.5.6
+comfy-angle==0.1.1
+comfy-kitchen==0.2.39
+comfyui-embedded-docs==0.5.14
+comfyui_frontend_package==1.57.1
+comfyui_workflow_templates==0.11.93
+comfyui-workflow-templates-core==0.3.384
+comfyui-workflow-templates-json==0.1.119
+comfyui-workflow-templates-media-api==0.3.84
+comfyui-workflow-templates-media-assets-01==0.1.48
+comfyui-workflow-templates-media-assets-02==0.1.20
+comfyui-workflow-templates-media-image==0.3.160
+comfyui-workflow-templates-media-other==0.3.229
+comfyui-workflow-templates-media-video==0.3.101
+gitdb==4.0.12
+GitPython==3.2.1
+kornia==0.8.3
+kornia_rs==0.2.0
+Mako==1.4.3
+markdown-it-py==4.2.0
+matrix-nio==0.26.0
+mdurl==0.1.2
+nh3==0.3.7
+numpy==1.26.4
+pycryptodome==4.1.0
+pydantic-settings==2.16.1
+PyGithub==2.10.0
+PyJWT==2.15.1
+PyNaCl==1.6.2
+PyOpenGL==3.1.10
+python-socks==3.1.1
+rich==15.0.0
+scipy==1.17.1
+sentencepiece==0.2.2
+shellingham==1.5.4
+simpleeval==1.0.8
+smmap==5.0.3
+spandrel==0.4.2
+SQLAlchemy==2.1.5
+toml==0.10.2
+torchsde==0.2.6
+trampoline==0.1.2
+typer==0.27.3
+unpaddedbase64==2.1.0
+uv==0.13.4

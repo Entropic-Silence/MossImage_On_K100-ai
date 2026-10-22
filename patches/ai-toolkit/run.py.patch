@@ -1,0 +1,13 @@
+--- a/run.py
++++ b/run.py
+@@ -39,6 +39,10 @@
+ from toolkit.util.unified_memory import apply_unified_memory_patches
+ apply_unified_memory_patches()
+ 
++# 海光 DCU 兼容补丁（MossImage 适配，见 toolkit/dcu_patches.py：精确 SDPA 反向、convrot 量化走 torch 实现）
++from toolkit.dcu_patches import install as _install_dcu_patches
++_install_dcu_patches()
++
+ if seed is not None:
+     import random
+     import numpy as np
